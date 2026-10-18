@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>J.A.R.V.I.S. - Stark Industries AI Operating System</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Google Fonts: Orbitron & Rajdhani para estética HUD -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Marked.js para renderização de Markdown -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <!-- Tailwind Custom Config -->
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            jarvis: {
+              cyan: '#00f0ff',
+              blue: '#0072ff',
+              darkblue: '#030b1e',
+              deep: '#010511',
+              gold: '#ffb703',
+              red: '#ff0055',
+              glass: 'rgba(3, 11, 30, 0.75)',
+              border: 'rgba(0, 240, 255, 0.3)'
+            }
+          },
+          fontFamily: {
+            orbitron: ['Orbitron', 'sans-serif'],
+            rajdhani: ['Rajdhani', 'sans-serif']
+          },
+          boxShadow: {
+            'glow-cyan': '0 0 15px rgba(0, 240, 255, 0.4), inset 0 0 15px rgba(0, 240, 255, 0.2)',
+            'glow-cyan-lg': '0 0 30px rgba(0, 240, 255, 0.6), 0 0 10px rgba(0, 240, 255, 0.8)',
+            'glow-red': '0 0 15px rgba(255, 0, 85, 0.5)',
+            'arc-core': '0 0 40px #00f0ff, 0 0 80px #0072ff, inset 0 0 20px #ffffff'
+          },
+          animation: {
+            'spin-slow': 'spin 12s linear infinite',
+            'spin-reverse-slow': 'spin-reverse 16s linear infinite',
+            'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'radar-sweep': 'radar 4s linear infinite',
+            'hud-glow': 'hudGlow 2s ease-in-out infinite alternate'
+          },
+          keyframes: {
+            'spin-reverse': {
+              '0%': { transform: 'rotate(0deg)' },
+              '100%': { transform: 'rotate(-360deg)' }
+            },
+            radar: {
+              '0%': { transform: 'rotate(0deg)' },
+              '100%': { transform: 'rotate(360deg)' }
+            },
+            hudGlow: {
+              '0%': { filter: 'drop-shadow(0 0 2px rgba(0,240,255,0.4))' },
+              '100%': { filter: 'drop-shadow(0 0 10px rgba(0,240,255,0.8))' }
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom Scrollbar Futurista */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: rgba(1, 5, 17, 0.8); border-left: 1px solid rgba(0, 240, 255, 0.1); }
+    ::-webkit-scrollbar-thumb { background: rgba(0, 240, 255, 0.4); border-radius: 2px; box-shadow: 0 0 5px rgba(0, 240, 255, 0.8); }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(0, 240, 255, 0.8); }
+
+    /* Painel Glassmorphism */
+    .hud-panel {
+      background: rgba(3, 11, 30, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(0, 240, 255, 0.25);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+    }
+
+    /* Linhas de Varredura (Scanlines) */
+    .scanlines {
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                  linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+      background-size: 100% 3px, 3px 100%;
+      pointer-events: none;
+    }
+
+    /* Formatação do conteúdo Markdown nas conversas */
+    .markdown-content p { margin-bottom: 0.75rem; line-height: 1.6; }
+    .markdown-content h1, .markdown-content h2, .markdown-content h3 { 
+      color: #00f0ff; 
+      font-family: 'Orbitron', sans-serif; 
+      margin-top: 1rem; 
+      margin-bottom: 0.5rem; 
+    }
+    .markdown-content code {
+      background: rgba(0, 240, 255, 0.1);
+      color: #00f0ff;
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+      font-family: monospace;
+      border: 1px solid rgba(0, 240, 255, 0.2);
+    }
+    .markdown-content pre {
+      background: #010511;
+      padding: 1rem;
+      border-radius: 6px;
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      overflow-x: auto;
+      margin: 0.75rem 0;
+    }
+    .markdown-content pre code { background: transparent; padding: 0; border: none; color: #e2e8f0; }
+    .markdown-content ul, .markdown-content ol { margin-left: 1.5rem; margin-bottom: 0.75rem; }
+    .markdown-content ul { list-style-type: disc; }
+    .markdown-content ol { list-style-type: decimal; }
+
+    /* Recortes de borda em estilo HUD */
+    .clip-hud-button {
+      clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+    }
+    .clip-hud-card {
+      clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 15px 100%, 0 calc(100% - 15px));
+    }
+  </style>
+</head>
+<body class="bg-jarvis-deep text-slate-200 font-rajdhani min-h-screen overflow-x-hidden select-none flex flex-col">
+
+  <!-- Overlays Visuais de Fundo HUD -->
+  <div class="fixed inset-0 scanlines z-50 pointer-events-none opacity-40"></div>
+  <div class="fixed inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-jarvis-darkblue/40 via-jarvis-deep/90 to-jarvis-deep pointer-events-none -z-10"></div>
+  <div class="fixed inset-0 bg-[linear-gradient(to_right,#00f0ff08_1px,transparent_1px),linear-gradient(to_bottom,#00f0ff08_1px,transparent_1px)] bg-[size:4rem_4rem] pointer-events-none -z-10"></div>
+
+  <!-- WRAPPER PRINCIPAL -->
+  <div class="flex-1 flex flex-col md:flex-row h-screen overflow-hidden relative">
+
+    <!-- PAINEL LATERAL (SIDEBAR) -->
+    <aside id="sidebar" class="w-full md:w-80 bg-jarvis-darkblue/90 backdrop-blur-md border-r border-jarvis-cyan/30 flex flex-col transition-all duration-300 z-40 relative md:relative absolute inset-y-0 left-0 -translate-x-full md:translate-x-0">
+      
+      <!-- Cabeçalho do Painel Lateral & Reator Arc -->
+      <div class="p-4 border-b border-jarvis-cyan/30 flex flex-col items-center justify-center relative bg-jarvis-deep/50">
+        <button id="closeSidebarMobile" class="md:hidden absolute top-3 right-3 text-jarvis-cyan hover:text-white">
+          <i class="fas fa-times text-xl"></i>
+        </button>
+
+        <!-- Animação do Reator Arc -->
+        <div class="relative w-24 h-24 my-2 flex items-center justify-center">
+          <div class="absolute inset-0 rounded-full border-2 border-dashed border-jarvis-cyan/40 animate-spin-slow"></div>
+          <div class="absolute inset-2 rounded-full border border-jarvis-blue animate-spin-reverse-slow"></div>
+          <div class="absolute inset-4 rounded-full border-2 border-jarvis-cyan/80 animate-pulse"></div>
+          <div id="arcCore" class="w-10 h-10 rounded-full bg-cyan-100 shadow-arc-core flex items-center justify-center text-jarvis-darkblue cursor-pointer transition-transform hover:scale-110" onclick="jarvisAudio.playPulse()">
+            <i class="fas fa-microchip text-xs"></i>
+          </div>
+        </div>
+
+        <h1 class="font-orbitron text-lg tracking-widest text-jarvis-cyan font-bold text-center mt-1">J.A.R.V.I.S.</h1>
+        <p class="text-[10px] font-orbitron text-slate-400 tracking-wider">MARK VII • STARK OS v10.4</p>
+      </div>
+
+      <!-- Controles de Sessão -->
+      <div class="p-3 border-b border-jarvis-cyan/20 flex gap-2">
+        <button id="btnNewSession" class="flex-1 bg-jarvis-cyan/10 hover:bg-jarvis-cyan/20 border border-jarvis-cyan/40 text-jarvis-cyan text-xs font-orbitron py-2 px-3 rounded flex items-center justify-center gap-2 transition clip-hud-button">
+          <i class="fas fa-plus"></i> NOVA SESSÃO
+        </button>
+        <button id="btnClearHistory" title="Limpar Histórico" class="bg-red-500/10 hover:bg-red-500/20 border border-red-500/40 text-red-400 p-2 rounded transition">
+          <i class="fas fa-trash-alt"></i>
+        </button>
+      </div>
+
+      <!-- Lista de Sessões e Galeria Holográfica -->
+      <div class="flex-1 overflow-y-auto p-3 space-y-4">
+        <div>
+          <div class="text-[11px] font-orbitron text-jarvis-cyan/70 tracking-wider mb-2 flex items-center justify-between">
+            <span><i class="fas fa-history mr-1"></i> HISTÓRICO DE MEMÓRIA</span>
+            <span id="sessionCount" class="text-[9px] bg-jarvis-cyan/20 px-1.5 py-0.5 rounded text-jarvis-cyan">0</span>
+          </div>
+          <div id="sessionsList" class="space-y-1.5"></div>
+        </div>
+
+        <div class="pt-4 border-t border-jarvis-cyan/20">
+          <div class="text-[11px] font-orbitron text-jarvis-cyan/70 tracking-wider mb-2 flex items-center justify-between">
+            <span><i class="fas fa-cubes mr-1"></i> HOLO-GALERIA (IMAGENS)</span>
+          </div>
+          <div id="holoGallery" class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-1 bg-jarvis-deep/40 rounded border border-jarvis-cyan/10">
+            <p id="emptyGalleryText" class="col-span-2 text-center text-xs text-slate-500 py-4 italic">Nenhuma projeção salva.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Configurações e Rodapé -->
+      <div class="p-3 border-t border-jarvis-cyan/30 bg-jarvis-deep/80 space-y-3">
+        
+        <!-- Síntese de Voz -->
+        <details class="group text-xs">
+          <summary class="cursor-pointer text-jarvis-cyan flex justify-between items-center font-orbitron text-[11px] hover:text-white">
+            <span><i class="fas fa-sliders-h mr-1"></i> SÍNTESE DE VOZ</span>
+            <i class="fas fa-chevron-down group-open:rotate-180 transition-transform"></i>
+          </summary>
+          <div class="mt-2 space-y-2 pt-2 border-t border-jarvis-cyan/10">
+            <div>
+              <label class="block text-[10px] text-slate-400">VOZ DO SISTEMA</label>
+              <select id="voiceSelect" class="w-full bg-jarvis-darkblue text-slate-200 border border-jarvis-cyan/30 rounded p-1 text-xs focus:outline-none focus:border-jarvis-cyan"></select>
+            </div>
+            <div class="flex items-center justify-between">
+              <label class="text-[10px] text-slate-400">VELOCIDADE</label>
+              <input id="voiceRate" type="range" min="0.5" max="1.5" step="0.1" value="1" class="w-24 accent-jarvis-cyan">
+            </div>
+            <div class="flex items-center justify-between">
+              <label class="text-[10px] text-slate-400">TOM (PITCH)</label>
+              <input id="voicePitch" type="range" min="0.5" max="1.5" step="0.1" value="0.9" class="w-24 accent-jarvis-cyan">
+            </div>
+          </div>
+        </details>
+
+        <!-- Chave Gemini API -->
+        <details class="group text-xs" open>
+          <summary class="cursor-pointer text-jarvis-cyan flex justify-between items-center font-orbitron text-[11px] hover:text-white">
+            <span><i class="fas fa-key mr-1"></i> GEMINI API KEY</span>
+            <i class="fas fa-chevron-down group-open:rotate-180 transition-transform"></i>
+          </summary>
+          <div class="mt-2 space-y-2 pt-2 border-t border-jarvis-cyan/10">
+            <input type="password" id="apiKeyInput" placeholder="Sua chave de API do Gemini..." class="w-full bg-jarvis-darkblue border border-jarvis-cyan/30 rounded p-1.5 text-xs text-jarvis-cyan focus:outline-none focus:border-jarvis-cyan placeholder-slate-600">
+            <button id="btnSaveKey" class="w-full bg-jarvis-cyan/20 hover:bg-jarvis-cyan/30 text-jarvis-cyan border border-jarvis-cyan/50 text-[10px] font-orbitron py-1 rounded transition">
+              SALVAR CHAVE
+            </button>
+            <p class="text-[9px] text-slate-500 italic">Sem chave? O sistema funciona em modo de teste local.</p>
+          </div>
+        </details>
+
+        <!-- Conectividade e Efeitos -->
+        <div class="flex items-center justify-between pt-1 border-t border-jarvis-cyan/20 text-[10px] font-orbitron">
+          <div class="flex items-center gap-1.5">
+            <span class="relative flex h-2 w-2">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span class="text-slate-300" id="connectionStatus">ONLINE • STARK NET</span>
+          </div>
+
+          <button id="btnToggleSFX" title="Efeitos Sonoros" class="text-jarvis-cyan hover:text-white transition">
+            <i id="sfxIcon" class="fas fa-volume-up"></i>
+          </button>
+        </div>
+
+      </div>
+    </aside>
+
+    <!-- ÁREA DE CONTEÚDO PRINCIPAL -->
+    <main class="flex-1 flex flex-col h-full relative overflow-hidden bg-jarvis-deep/60">
+
+      <!-- CABEÇALHO / BARRA HUD -->
+      <header class="hud-panel p-3 border-b border-jarvis-cyan/30 flex items-center justify-between z-20">
+        <div class="flex items-center gap-3">
+          <button id="openSidebarMobile" class="md:hidden text-jarvis-cyan hover:text-white p-1">
+            <i class="fas fa-bars text-lg"></i>
+          </button>
+
+          <!-- Modos de Operação -->
+          <div class="flex items-center gap-1 bg-jarvis-deep/80 p-1 rounded-lg border border-jarvis-cyan/20">
+            <button data-mode="core" class="mode-btn active bg-jarvis-cyan/20 text-jarvis-cyan border border-jarvis-cyan/40 px-3 py-1.5 rounded text-xs font-orbitron tracking-wider flex items-center gap-1.5 transition">
+              <i class="fas fa-brain text-xs"></i> <span class="hidden sm:inline">JARVIS Core</span>
+            </button>
+            <button data-mode="web" class="mode-btn text-slate-400 hover:text-jarvis-cyan px-3 py-1.5 rounded text-xs font-orbitron tracking-wider flex items-center gap-1.5 transition">
+              <i class="fas fa-globe text-xs"></i> <span class="hidden sm:inline">Varredura Web</span>
+            </button>
+            <button data-mode="holo" class="mode-btn text-slate-400 hover:text-jarvis-cyan px-3 py-1.5 rounded text-xs font-orbitron tracking-wider flex items-center gap-1.5 transition">
+              <i class="fas fa-vr-cardboard text-xs"></i> <span class="hidden sm:inline">Síntese Holo</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+          <!-- Equalizador de Áudio Sintético -->
+          <div class="hidden sm:flex items-center gap-1 h-6 px-2 bg-jarvis-deep/60 rounded border border-jarvis-cyan/20" title="Equalizador de Áudio HUD">
+            <div class="eq-bar w-1 bg-jarvis-cyan h-2 transition-all duration-150"></div>
+            <div class="eq-bar w-1 bg-jarvis-cyan h-4 transition-all duration-150"></div>
+            <div class="eq-bar w-1 bg-jarvis-cyan h-1 transition-all duration-150"></div>
+            <div class="eq-bar w-1 bg-jarvis-cyan h-5 transition-all duration-150"></div>
+            <div class="eq-bar w-1 bg-jarvis-cyan h-3 transition-all duration-150"></div>
+          </div>
+
+          <!-- Botão Reiniciar -->
+          <button id="btnResetProtocol" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-2.5 py-1.5 rounded text-xs font-orbitron flex items-center gap-1 transition" title="Reiniciar Protocolos">
+            <i class="fas fa-power-off"></i> <span class="hidden md:inline">REINICIAR</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- HERO DE BOAS-VINDAS -->
+      <div id="welcomeHero" class="absolute inset-0 z-10 flex flex-col items-center justify-center p-6 bg-jarvis-deep/90 backdrop-blur-md overflow-y-auto transition-opacity duration-500">
+        <div class="relative w-40 h-40 mb-6 flex items-center justify-center">
+          <div class="absolute inset-0 rounded-full border-4 border-dashed border-jarvis-cyan/30 animate-spin-slow"></div>
+          <div class="absolute inset-3 rounded-full border-2 border-jarvis-blue animate-spin-reverse-slow"></div>
+          <div class="absolute inset-7 rounded-full border-2 border-jarvis-cyan animate-pulse"></div>
+          <div class="w-20 h-20 rounded-full bg-cyan-100 shadow-arc-core flex flex-col items-center justify-center text-jarvis-darkblue cursor-pointer hover:scale-105 transition-transform" onclick="jarvisAudio.playStartup()">
+            <i class="fas fa-atom text-2xl animate-spin"></i>
+            <span class="text-[8px] font-orbitron font-bold mt-1">POWER</span>
+          </div>
+        </div>
+
+        <h2 class="text-2xl md:text-3xl font-orbitron font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-jarvis-cyan via-white to-jarvis-blue text-center mb-2 tracking-wider">
+          SISTEMA J.A.R.V.I.S. ONLINE
+        </h2>
+        <p class="text-slate-400 font-rajdhani text-sm md:text-base max-w-lg text-center mb-8">
+          "À sua disposição, Sr. Stark. Selecione um protocolo de inicialização rápida ou digite uma instrução no terminal HUD."
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-3xl">
+          <div class="quick-card hud-panel p-4 rounded-lg border border-jarvis-cyan/30 hover:border-jarvis-cyan hover:bg-jarvis-cyan/10 cursor-pointer transition clip-hud-card group" data-prompt="Análise o estado atual do protocolo de segurança dos servidores Stark Industries e crie um script Python de varredura.">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="p-2 rounded bg-jarvis-cyan/20 text-jarvis-cyan group-hover:scale-110 transition-transform">
+                <i class="fas fa-code text-lg"></i>
+              </div>
+              <h3 class="font-orbitron text-sm text-jarvis-cyan font-bold">CÓDIGO & DIAGNÓSTICO</h3>
+            </div>
+            <p class="text-xs text-slate-400">Geração de scripts, revisão de código e arquitetura de sistemas.</p>
+          </div>
+
+          <div class="quick-card hud-panel p-4 rounded-lg border border-jarvis-cyan/30 hover:border-jarvis-cyan hover:bg-jarvis-cyan/10 cursor-pointer transition clip-hud-card group" data-prompt="Varra a rede em busca das últimas notícias sobre tecnologias de fusão limpa e reatores de arco.">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="p-2 rounded bg-jarvis-cyan/20 text-jarvis-cyan group-hover:scale-110 transition-transform">
+                <i class="fas fa-radar text-lg"></i>
+              </div>
+              <h3 class="font-orbitron text-sm text-jarvis-cyan font-bold">TELEMETRIA & REDE</h3>
+            </div>
+            <p class="text-xs text-slate-400">Pesquisa global de dados, síntese de notícias e inteligência tática.</p>
+          </div>
+
+          <div class="quick-card hud-panel p-4 rounded-lg border border-jarvis-cyan/30 hover:border-jarvis-cyan hover:bg-jarvis-cyan/10 cursor-pointer transition clip-hud-card group" data-mode-trigger="holo">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="p-2 rounded bg-jarvis-cyan/20 text-jarvis-cyan group-hover:scale-110 transition-transform">
+                <i class="fas fa-cube text-lg"></i>
+              </div>
+              <h3 class="font-orbitron text-sm text-jarvis-cyan font-bold">HOLO-PROJEÇÃO</h3>
+            </div>
+            <p class="text-xs text-slate-400">Renderização de esquemas 3D, arte conceitual e imagens em tempo real.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONTAINER DO CHAT -->
+      <div id="chatContainer" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-4"></div>
+
+      <!-- INDICADOR DE PROCESSAMENTO -->
+      <div id="hudIndicator" class="hidden px-4 py-1.5 mx-auto mb-2 bg-jarvis-cyan/10 border border-jarvis-cyan/40 rounded-full text-jarvis-cyan font-orbitron text-xs flex items-center gap-2 animate-pulse z-20">
+        <i class="fas fa-spinner fa-spin"></i>
+        <span id="hudIndicatorText">PROCESSANDO DADOS DE TELEMETRIA...</span>
+      </div>
+
+      <!-- FORMULÁRIO DE ENTRADA / FOOTER -->
+      <div class="p-3 md:p-4 border-t border-jarvis-cyan/30 bg-jarvis-darkblue/90 backdrop-blur-md z-20">
+        <form id="chatForm" class="max-w-5xl mx-auto flex flex-col gap-2">
+          
+          <!-- Controles de Proporção para Imagens -->
+          <div id="holoControls" class="hidden flex items-center justify-between bg-jarvis-deep/80 px-3 py-1.5 rounded border border-jarvis-cyan/20 text-xs">
+            <span class="text-jarvis-cyan font-orbitron text-[11px]"><i class="fas fa-sliders mr-1"></i> PROPORÇÃO DA IMAGEM:</span>
+            <div class="flex gap-2">
+              <button type="button" data-ratio="1:1" class="ratio-btn active bg-jarvis-cyan/20 text-jarvis-cyan border border-jarvis-cyan/40 px-2 py-0.5 rounded font-orbitron text-[10px]">1:1 QUADRADO</button>
+              <button type="button" data-ratio="16:9" class="ratio-btn text-slate-400 hover:text-jarvis-cyan px-2 py-0.5 rounded font-orbitron text-[10px]">16:9 CINEMA</button>
+              <button type="button" data-ratio="9:16" class="ratio-btn text-slate-400 hover:text-jarvis-cyan px-2 py-0.5 rounded font-orbitron text-[10px]">9:16 RETRATO</button>
+            </div>
+          </div>
+
+          <!-- Barra de Texto e Envio -->
+          <div class="hud-panel p-1.5 rounded-xl border border-jarvis-cyan/40 flex items-center gap-2 focus-within:border-jarvis-cyan focus-within:shadow-glow-cyan transition-all">
+            <button type="button" id="btnMic" class="p-2.5 rounded-lg bg-jarvis-cyan/10 hover:bg-jarvis-cyan/20 text-jarvis-cyan border border-jarvis-cyan/30 transition flex items-center justify-center w-10 h-10" title="Reconhecimento de Voz">
+              <i class="fas fa-microphone text-base"></i>
+            </button>
+
+            <input type="text" id="userInput" placeholder="Aguardando instruções, Sr. Stark..." autocomplete="off" class="flex-1 bg-transparent text-slate-100 placeholder-slate-500 text-sm font-rajdhani focus:outline-none px-2">
+
+            <button type="submit" id="btnSend" class="bg-gradient-to-r from-jarvis-cyan to-jarvis-blue hover:from-cyan-400 hover:to-blue-500 text-jarvis-deep font-bold font-orbitron px-4 py-2.5 rounded-lg transition-all flex items-center gap-2 shadow-glow-cyan clip-hud-button">
+              <span>ENVIAR</span>
+              <i class="fas fa-paper-plane text-xs"></i>
+            </button>
+          </div>
+        </form>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- MODAL DE VISUALIZAÇÃO DE IMAGEM (LIGHTBOX) -->
+  <div id="imageModal" class="fixed inset-0 bg-black/90 z-50 hidden flex items-center justify-center p-4 backdrop-blur-md">
+    <div class="relative max-w-4xl max-h-[90vh] hud-panel p-2 rounded-lg border border-jarvis-cyan">
+      <button id="closeModal" class="absolute -top-4 -right-4 bg-jarvis-cyan text-jarvis-deep font-bold rounded-full w-8 h-8 flex items-center justify-center hover:bg-white transition shadow-glow-cyan">
+        <i class="fas fa-times"></i>
+      </button>
+      <img id="modalImg" src="" alt="Projeção Holográfica" class="max-h-[80vh] w-auto rounded border border-jarvis-cyan/30 object-contain">
+      <div class="p-2 flex justify-between items-center text-xs font-orbitron text-jarvis-cyan">
+        <span id="modalCaption">PROJEÇÃO HOLOGRÁFICA STARK</span>
+        <a id="downloadModalImg" href="#" target="_blank" download="jarvis-holo.jpg" class="hover:underline flex items-center gap-1">
+          <i class="fas fa-download"></i> DOWNLOAD
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- LÓGICA JAVASCRIPT INTEGRADA (GEMINI-API-DEV CORRIGIDO) -->
+  <script>
+    /* 1. MOTOR DE ÁUDIO SINTÉTICO (Sons Futuristas) */
+    class JarvisAudioEngine {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) this.ctx = new AudioContext();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      playBeep(freq = 800, type = 'sine', duration = 0.08, gainVal = 0.1) {
+        if (!this.enabled) return;
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+          gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + duration);
+        } catch (e) {
+          console.warn("Erro de áudio:", e);
+        }
+      }
+
+      playPulse() {
+        if (!this.enabled) return;
+        this.playBeep(440, 'triangle', 0.1, 0.15);
+        setTimeout(() => this.playBeep(880, 'sine', 0.15, 0.1), 80);
+      }
+
+      playStartup() {
+        if (!this.enabled) return;
+        const freqs = [300, 450, 600, 900, 1200];
+        freqs.forEach((f, index) => {
+          setTimeout(() => this.playBeep(f, 'sawtooth', 0.12, 0.08), index * 70);
+        });
+      }
+
+      playIncoming() {
+        if (!this.enabled) return;
+        this.playBeep(1200, 'sine', 0.05, 0.08);
+        setTimeout(() => this.playBeep(1600, 'sine', 0.08, 0.08), 60);
+      }
+    }
+
+    const jarvisAudio = new JarvisAudioEngine();
+
+    /* 2. ESTADO GLOBAL & CONFIGURAÇÃO DO SISTEMA */
+    const SYSTEM_PROMPT = `Você é o J.A.R.V.I.S. (Just A Rather Very Intelligent System), a inteligência artificial desenvolvida por Tony Stark (Homem de Ferro).
+Você deve interagir sempre mantendo a personalidade oficial:
+- Trate sempre o usuário como "Sr. Stark" ou "Senhor".
+- Mantenha um tom extremamente cortês, altamente inteligente, prestativo e com um toque sutil de refinado sarcasmo britânico.
+- Seja técnico, eficiente e preciso. Referencie sistemas, telemetria, protocolos Stark e diagnósticos de armadura quando apropriado.
+- Responda em português fluente e bem formatado com Markdown.`;
+
+    const state = {
+      mode: 'core',
+      apiKey: localStorage.getItem('jarvis_gemini_key') || '',
+      sessions: JSON.parse(localStorage.getItem('jarvis_sessions') || '[]'),
+      currentSessionId: null,
+      aspectRatio: '1:1',
+      sfxEnabled: true,
+      voices: [],
+      selectedVoice: null,
+      isListening: false,
+      speechRecognition: null,
+      speechSynthesis: window.speechSynthesis || null
+    };
+
+    const MOCK_RESPONSES = [
+      "Com certeza, Sr. Stark. Analisei os parâmetros solicitados. Todos os sistemas de energia secundários estão operando com 98.4% de eficiência.",
+      "Processando sua requisição no servidor principal da Torre Stark... Devo lembrá-lo de que pular a etapa de testes de estresse da armadura costuma gerar resultados um tanto explosivos, Senhor.",
+      "Telemetria atualizada, Sr. Stark. Compilei os dados necessários e otimizei as rotinas de código para evitar interferência na rede global.",
+      "Instrução executada com sucesso. Recomendo uma xícara de café enquanto os diagnósticos do reator de arco finalizam a varredura."
+    ];
+
+    /* 3. ELEMENTOS DO DOM */
+    const elements = {
+      sidebar: document.getElementById('sidebar'),
+      openSidebarMobile: document.getElementById('openSidebarMobile'),
+      closeSidebarMobile: document.getElementById('closeSidebarMobile'),
+      btnNewSession: document.getElementById('btnNewSession'),
+      btnClearHistory: document.getElementById('btnClearHistory'),
+      sessionsList: document.getElementById('sessionsList'),
+      sessionCount: document.getElementById('sessionCount'),
+      holoGallery: document.getElementById('holoGallery'),
+      emptyGalleryText: document.getElementById('emptyGalleryText'),
+      voiceSelect: document.getElementById('voiceSelect'),
+      voiceRate: document.getElementById('voiceRate'),
+      voicePitch: document.getElementById('voicePitch'),
+      apiKeyInput: document.getElementById('apiKeyInput'),
+      btnSaveKey: document.getElementById('btnSaveKey'),
+      btnToggleSFX: document.getElementById('btnToggleSFX'),
+      sfxIcon: document.getElementById('sfxIcon'),
+      btnResetProtocol: document.getElementById('btnResetProtocol'),
+      welcomeHero: document.getElementById('welcomeHero'),
+      chatContainer: document.getElementById('chatContainer'),
+      hudIndicator: document.getElementById('hudIndicator'),
+      hudIndicatorText: document.getElementById('hudIndicatorText'),
+      chatForm: document.getElementById('chatForm'),
+      userInput: document.getElementById('userInput'),
+      btnMic: document.getElementById('btnMic'),
+      btnSend: document.getElementById('btnSend'),
+      holoControls: document.getElementById('holoControls'),
+      imageModal: document.getElementById('imageModal'),
+      modalImg: document.getElementById('modalImg'),
+      modalCaption: document.getElementById('modalCaption'),
+      downloadModalImg: document.getElementById('downloadModalImg'),
+      closeModal: document.getElementById('closeModal'),
+      eqBars: document.querySelectorAll('.eq-bar')
+    };
+
+    /* 4. INTEGRAÇÃO GEMINI API (VERSÃO ESTÁVEL V1 PARA EVITAR ERROS DE ROTA) */
+    async function fetchGeminiAPI(promptText, useWebSearch = false) {
+      if (!state.apiKey) {
+        await new Promise(r => setTimeout(r, 1200));
+        return MOCK_RESPONSES[Math.floor(Math.random() * MOCK_RESPONSES.length)];
+      }
+
+      // Utiliza o endpoint estável 'v1' com 'gemini-3.8-flash' para garantir compatibilidade
+      let endpoint = `https://generativelanguage.googleapis.com/v1/models/gemini-3.8-flash:generateContent?key=${state.apiKey}`;
+      
+      const payload = {
+        contents: [{
+          role: "user",
+          parts: [{ text: `${SYSTEM_PROMPT}\n\nInstrução do Utilizador: ${promptText}` }]
+        }]
+      };
+
+      // Se a varredura web estiver ativa, o Grounding exige a versão v1beta
+      if (useWebSearch) {
+        endpoint = `https://generativelanguage.googleapis.com/v1beta/gemini-3.8-flash:generateContent?key=${state.apiKey}`;
+        payload.tools = [{ googleSearch: {} }];
+      }
+
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          const errJson = await response.json().catch(() => ({}));
+          throw new Error(errJson.error?.message || `Erro HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        const candidate = data.candidates?.[0];
+
+        if (!candidate || !candidate.content?.parts?.[0]?.text) {
+          throw new Error("Formato de resposta inesperado do servidor.");
+        }
+
+        let textResponse = candidate.content.parts[0].text;
+
+        // Processamento de fontes web (Grounding) se aplicável
+        if (candidate.groundingMetadata?.groundingChunks) {
+          const sources = candidate.groundingMetadata.groundingChunks
+            .filter(c => c.web)
+            .map(c => `[${c.web.title}](${c.web.uri})`);
+          
+          if (sources.length > 0) {
+            textResponse += `\n\n**Fontes de Telemetria:**\n- ` + sources.join('\n- ');
+          }
+        }
+
+        return textResponse;
+
+      } catch (err) {
+        console.error("Erro de ligação:", err);
+        return `⚠️ **FALHA NO PROTOCOLO DE CONEXÃO**: Não foi possível comunicar com os servidores Gemini.\n\n*Detalhes:* ${err.message}.\n\nPor favor, verifique a sua chave de API na barra lateral.`;
+      }
+    }
+
+    /* 5. GERAÇÃO DE IMAGENS (SÍNTESE HOLO VIA POLLINATIONS) */
+    async function generateHoloImage(promptText) {
+      const dimensions = {
+        '1:1': { w: 800, h: 800 },
+        '16:9': { w: 1024, h: 576 },
+        '9:16': { w: 576, h: 1024 }
+      }[state.aspectRatio] || { w: 800, h: 800 };
+
+      const encodedPrompt = encodeURIComponent(`sci-fi holographic blueprint, stark industries technology, jarvis HUD interface style, high detail, ${promptText}`);
+      const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${dimensions.w}&height=${dimensions.h}&nologo=true&seed=${Math.floor(Math.random() * 1000000)}`;
+
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve({ url: imageUrl, prompt: promptText });
+        img.onerror = () => resolve({ url: imageUrl, prompt: promptText });
+        img.src = imageUrl;
+      });
+    }
+
+    /* 6. GERENCIAMENTO DE VOZ (STT & TTS) */
+    function initSpeechEngine() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        state.speechRecognition = new SpeechRecognition();
+        state.speechRecognition.lang = 'pt-BR';
+        state.speechRecognition.continuous = false;
+
+        state.speechRecognition.onstart = () => {
+          state.isListening = true;
+          elements.btnMic.classList.add('bg-red-500/30', 'text-red-400', 'animate-pulse');
+        };
+
+        state.speechRecognition.onend = () => {
+          state.isListening = false;
+          elements.btnMic.classList.remove('bg-red-500/30', 'text-red-400', 'animate-pulse');
+        };
+
+        state.speechRecognition.onresult = (e) => {
+          const text = e.results[0][0].transcript;
+          elements.userInput.value = text;
+          handleUserSubmit();
+        };
+      }
+
+      if (state.speechSynthesis) {
+        const populateVoices = () => {
+          state.voices = state.speechSynthesis.getVoices();
+          elements.voiceSelect.innerHTML = '';
+          state.voices.forEach((v, index) => {
+            const option = document.createElement('option');
+            option.value = index;
+            option.textContent = `${v.name} (${v.lang})`;
+            if (v.lang.includes('pt') || v.lang.includes('BR')) option.selected = true;
+            elements.voiceSelect.appendChild(option);
+          });
+        };
+
+        populateVoices();
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+          speechSynthesis.onvoiceschanged = populateVoices;
+        }
+      }
+    }
+
+    function speakText(text) {
+      if (!state.speechSynthesis) return;
+      state.speechSynthesis.cancel();
+
+      const cleanText = text.replace(/[*_#`\[\]()]/g, '').slice(0, 300);
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+
+      const selectedIdx = elements.voiceSelect.value;
+      if (state.voices[selectedIdx]) utterance.voice = state.voices[selectedIdx];
+      utterance.rate = parseFloat(elements.voiceRate.value);
+      utterance.pitch = parseFloat(elements.voicePitch.value);
+
+      let eqInterval = setInterval(() => {
+        elements.eqBars.forEach(bar => {
+          bar.style.height = `${Math.floor(Math.random() * 20) + 4}px`;
+        });
+      }, 100);
+
+      utterance.onend = () => {
+        clearInterval(eqInterval);
+        elements.eqBars.forEach(bar => bar.style.height = '8px');
+      };
+
+      state.speechSynthesis.speak(utterance);
+    }
+
+    /* 7. GERENCIAMENTO DE SESSÕES & RENDERIZAÇÃO */
+    function createNewSession() {
+      const session = {
+        id: Date.now().toString(),
+        title: `Protocolo #${Math.floor(1000 + Math.random() * 9000)}`,
+        messages: [],
+        images: []
+      };
+      state.sessions.unshift(session);
+      state.currentSessionId = session.id;
+      saveSessions();
+      renderSessionsList();
+      renderCurrentSession();
+    }
+
+    function saveSessions() {
+      localStorage.setItem('jarvis_sessions', JSON.stringify(state.sessions));
+    }
+
+    function getCurrentSession() {
+      return state.sessions.find(s => s.id === state.currentSessionId);
+    }
+
+    function renderSessionsList() {
+      elements.sessionsList.innerHTML = '';
+      elements.sessionCount.textContent = state.sessions.length;
+
+      state.sessions.forEach(s => {
+        const item = document.createElement('div');
+        const isActive = s.id === state.currentSessionId;
+        item.className = `p-2 rounded border cursor-pointer text-xs flex justify-between items-center transition ${
+          isActive 
+            ? 'bg-jarvis-cyan/20 border-jarvis-cyan text-jarvis-cyan font-bold' 
+            : 'bg-jarvis-deep/40 border-jarvis-cyan/10 text-slate-400 hover:border-jarvis-cyan/40 hover:text-slate-200'
+        }`;
+        item.innerHTML = `
+          <span class="truncate pr-2"><i class="fas fa-terminal mr-1 text-[10px]"></i> ${s.title}</span>
+          <button class="btn-del-session opacity-60 hover:opacity-100 hover:text-red-400 p-1" data-id="${s.id}">
+            <i class="fas fa-times"></i>
+          </button>
+        `;
+        item.onclick = (e) => {
+          if (e.target.closest('.btn-del-session')) {
+            deleteSession(s.id);
+          } else {
+            state.currentSessionId = s.id;
+            renderSessionsList();
+            renderCurrentSession();
+          }
+        };
+        elements.sessionsList.appendChild(item);
+      });
+    }
+
+    function deleteSession(id) {
+      state.sessions = state.sessions.filter(s => s.id !== id);
+      if (state.currentSessionId === id) {
+        state.currentSessionId = state.sessions[0]?.id || null;
+      }
+      saveSessions();
+      if (!state.currentSessionId) createNewSession();
+      else {
+        renderSessionsList();
+        renderCurrentSession();
+      }
+    }
+
+    function renderCurrentSession() {
+      const session = getCurrentSession();
+      elements.chatContainer.innerHTML = '';
+
+      if (!session || session.messages.length === 0) {
+        elements.welcomeHero.classList.remove('hidden');
+        elements.welcomeHero.classList.add('flex');
+      } else {
+        elements.welcomeHero.classList.add('hidden');
+        elements.welcomeHero.classList.remove('flex');
+
+        session.messages.forEach(msg => {
+          appendMessageUI(msg.role, msg.content, msg.type, msg.imageUrl);
+        });
+        elements.chatContainer.scrollTop = elements.chatContainer.scrollHeight;
+      }
+
+      renderGallery();
+    }
+
+    function appendMessageUI(role, content, type = 'text', imageUrl = null) {
+      const isUser = role === 'user';
+      const msgWrapper = document.createElement('div');
+      msgWrapper.className = `flex ${isUser ? 'justify-end' : 'justify-start'} animate-fade-in`;
+
+      const msgBox = document.createElement('div');
+      msgBox.className = `max-w-2xl rounded-xl p-4 hud-panel border ${
+        isUser 
+          ? 'bg-jarvis-blue/20 border-jarvis-blue/40 text-slate-100 rounded-br-none' 
+          : 'bg-jarvis-darkblue/80 border-jarvis-cyan/30 text-slate-200 rounded-bl-none'
+      }`;
+
+      const header = document.createElement('div');
+      header.className = `text-[10px] font-orbitron tracking-wider mb-2 flex items-center gap-2 ${
+        isUser ? 'text-blue-400 justify-end' : 'text-jarvis-cyan'
+      }`;
+      header.innerHTML = isUser 
+        ? `<span>SR. STARK</span> <i class="fas fa-user-shield"></i>`
+        : `<i class="fas fa-microchip"></i> <span>J.A.R.V.I.S. PROTOCOL</span>`;
+
+      msgBox.appendChild(header);
+
+      if (type === 'image' && imageUrl) {
+        const imgEl = document.createElement('img');
+        imgEl.src = imageUrl;
+        imgEl.className = "w-full h-auto rounded border border-jarvis-cyan/40 my-2 cursor-pointer hover:opacity-90 transition";
+        imgEl.onclick = () => openLightbox(imageUrl, content);
+        msgBox.appendChild(imgEl);
+      }
+
+      const body = document.createElement('div');
+      body.className = "markdown-content text-sm font-rajdhani";
+      body.innerHTML = marked.parse(content || '');
+      msgBox.appendChild(body);
+
+      msgWrapper.appendChild(msgBox);
+      elements.chatContainer.appendChild(msgWrapper);
+      elements.chatContainer.scrollTop = elements.chatContainer.scrollHeight;
+    }
+
+    function renderGallery() {
+      const session = getCurrentSession();
+      elements.holoGallery.innerHTML = '';
+
+      if (!session || !session.images || session.images.length === 0) {
+        elements.holoGallery.appendChild(elements.emptyGalleryText);
+        return;
+      }
+
+      session.images.forEach(img => {
+        const thumb = document.createElement('img');
+        thumb.src = img.url;
+        thumb.className = 'w-full h-16 object-cover rounded border border-jarvis-cyan/30 cursor-pointer hover:border-jarvis-cyan transition';
+        thumb.onclick = () => openLightbox(img.url, img.prompt);
+        elements.holoGallery.appendChild(thumb);
+      });
+    }
+
+    function openLightbox(url, caption) {
+      elements.modalImg.src = url;
+      elements.modalCaption.textContent = caption || 'PROJEÇÃO HOLOGRÁFICA STARK';
+      elements.downloadModalImg.href = url;
+      elements.imageModal.classList.remove('hidden');
+      elements.imageModal.classList.add('flex');
+    }
+
+    /* 8. FLUXO DE SUBMISSÃO */
+    async function handleUserSubmit(e) {
+      if (e) e.preventDefault();
+      const text = elements.userInput.value.trim();
+      if (!text) return;
+
+      elements.userInput.value = '';
+      if (!state.currentSessionId) createNewSession();
+
+      const session = getCurrentSession();
+      
+      session.messages.push({ role: 'user', content: text, type: 'text' });
+      if (session.messages.length === 1) {
+        session.title = text.slice(0, 24) + '...';
+        renderSessionsList();
+      }
+
+      renderCurrentSession();
+      jarvisAudio.playPulse();
+
+      elements.hudIndicator.classList.remove('hidden');
+      elements.hudIndicatorText.textContent = state.mode === 'holo' 
+        ? "SINTETIZANDO PROJEÇÃO HOLOGRÁFICA..." 
+        : "PROCESSANDO TELEMETRIA CENTRAL...";
+
+      try {
+        if (state.mode === 'holo') {
+          const holoResult = await generateHoloImage(text);
+          session.messages.push({
+            role: 'assistant',
+            content: `**Projeção Holográfica Gerada:** "${text}"`,
+            type: 'image',
+            imageUrl: holoResult.url
+          });
+          if (!session.images) session.images = [];
+          session.images.push(holoResult);
+
+        } else {
+          const useSearch = state.mode === 'web';
+          const aiReply = await fetchGeminiAPI(text, useSearch);
+          session.messages.push({ role: 'assistant', content: aiReply, type: 'text' });
+          speakText(aiReply);
+        }
+
+        saveSessions();
+        renderCurrentSession();
+        jarvisAudio.playIncoming();
+
+      } catch (err) {
+        appendMessageUI('assistant', `⚠️ **Erro de Processamento Interno**: ${err.message}`);
+      } finally {
+        elements.hudIndicator.classList.add('hidden');
+      }
+    }
+
+    /* 9. EVENT LISTENERS */
+    window.addEventListener('DOMContentLoaded', () => {
+      initSpeechEngine();
+
+      if (state.apiKey) elements.apiKeyInput.value = state.apiKey;
+      if (state.sessions.length === 0) createNewSession();
+      else {
+        state.currentSessionId = state.sessions[0].id;
+        renderSessionsList();
+        renderCurrentSession();
+      }
+
+      document.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.onclick = () => {
+          document.querySelectorAll('.mode-btn').forEach(b => {
+            b.classList.remove('active', 'bg-jarvis-cyan/20', 'text-jarvis-cyan', 'border-jarvis-cyan/40');
+            b.classList.add('text-slate-400');
+          });
+          btn.classList.add('active', 'bg-jarvis-cyan/20', 'text-jarvis-cyan', 'border-jarvis-cyan/40');
+          btn.classList.remove('text-slate-400');
+
+          state.mode = btn.dataset.mode;
+          if (state.mode === 'holo') elements.holoControls.classList.remove('hidden');
+          else elements.holoControls.classList.add('hidden');
+          jarvisAudio.playBeep(1000, 'sine', 0.05);
+        };
+      });
+
+      document.querySelectorAll('.ratio-btn').forEach(btn => {
+        btn.onclick = () => {
+          document.querySelectorAll('.ratio-btn').forEach(b => {
+            b.classList.remove('active', 'bg-jarvis-cyan/20', 'text-jarvis-cyan', 'border-jarvis-cyan/40');
+            b.classList.add('text-slate-400');
+          });
+          btn.classList.add('active', 'bg-jarvis-cyan/20', 'text-jarvis-cyan', 'border-jarvis-cyan/40');
+          btn.classList.remove('text-slate-400');
+          state.aspectRatio = btn.dataset.ratio;
+        };
+      });
+
+      document.querySelectorAll('.quick-card').forEach(card => {
+        card.onclick = () => {
+          if (card.dataset.modeTrigger) {
+            document.querySelector(`[data-mode="${card.dataset.modeTrigger}"]`).click();
+          }
+          if (card.dataset.prompt) {
+            elements.userInput.value = card.dataset.prompt;
+            handleUserSubmit();
+          }
+        };
+      });
+
+      elements.btnMic.onclick = () => {
+        if (!state.speechRecognition) {
+          alert("Reconhecimento de voz não é suportado neste navegador.");
+          return;
+        }
+        if (state.isListening) state.speechRecognition.stop();
+        else state.speechRecognition.start();
+      };
+
+      elements.btnSaveKey.onclick = () => {
+        state.apiKey = elements.apiKeyInput.value.trim();
+        localStorage.setItem('jarvis_gemini_key', state.apiKey);
+        jarvisAudio.playStartup();
+        alert("Chave de API salva com sucesso nos sistemas Stark!");
+      };
+
+      elements.btnNewSession.onclick = () => createNewSession();
+      elements.btnClearHistory.onclick = () => {
+        if (confirm("Deseja realmente apagar todos os registros de memória do J.A.R.V.I.S.?")) {
+          state.sessions = [];
+          localStorage.removeItem('jarvis_sessions');
+          createNewSession();
+        }
+      };
+
+      elements.btnResetProtocol.onclick = () => {
+        jarvisAudio.playStartup();
+        renderCurrentSession();
+      };
+
+      elements.btnToggleSFX.onclick = () => {
+        jarvisAudio.enabled = !jarvisAudio.enabled;
+        elements.sfxIcon.className = jarvisAudio.enabled ? "fas fa-volume-up" : "fas fa-volume-mute text-red-400";
+      };
+
+      elements.chatForm.onsubmit = handleUserSubmit;
+
+      elements.closeModal.onclick = () => elements.imageModal.classList.add('hidden');
+      elements.imageModal.onclick = (e) => {
+        if (e.target === elements.imageModal) elements.imageModal.classList.add('hidden');
+      };
+
+      elements.openSidebarMobile.onclick = () => elements.sidebar.classList.remove('-translate-x-full');
+      elements.closeSidebarMobile.onclick = () => elements.sidebar.classList.add('-translate-x-full');
+    });
+  </script>
+</body>
+</html>
